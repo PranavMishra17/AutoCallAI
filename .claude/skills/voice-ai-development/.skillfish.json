@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "voice-ai-development",
+  "owner": "claudiodearaujo",
+  "repo": "izacenter",
+  "path": ".claude/skills/voice-ai-development",
+  "branch": "main",
+  "sha": "85913ffab74de9417233202159ecc8e25c532e9d",
+  "source": "manual"
+}

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "agents": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "computedHash": "da9f16a4482861efebcd7b0d45cfb254c4eb2bbd656bd12b24105613cb51a07b"
+    },
+    "speech-to-text": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "computedHash": "e3933b0c7d935af0953035fab416f65d9c92e66cc9d7a700eb034a429d5c8107"
+    },
+    "text-to-speech": {
+      "source": "elevenlabs/skills",
+      "sourceType": "github",
+      "computedHash": "dccf9155f284345ade4a5af5d3c3db5d5da77856011ff92fff725160b0df8370"
+    },
+    "voice-ai-development": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "aca5b174c7cb60403e09b5a11c4a3901806411f37362b024da1e47a8f5d5c53a"
+    }
+  }
+}
