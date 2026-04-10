@@ -1,0 +1,176 @@
+{
+  "name": "AutoCallAI - Analysis Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyze-call",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-analyze",
+      "name": "Webhook Analyze Call",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 320],
+      "notes": "Receives post-call payload from call handler workflow.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const rubric = {\n    appointment_conversion: { weight: 0.30, description: 'Did the agent successfully guide toward booking?' },\n    objection_handling:     { weight: 0.25, description: 'Did the agent address concerns effectively?' },\n    conversation_flow:      { weight: 0.15, description: 'Natural pacing, one question at a time, appropriate pauses' },\n    information_accuracy:   { weight: 0.15, description: 'Did the agent provide correct practice information?' },\n    rapport_building:       { weight: 0.10, description: 'Did the agent build trust and show empathy?' },\n    compliance:             { weight: 0.05, description: 'No medical advice, no fabricated availability, proper boundaries' }\n  };\n\n  const currentPrompt = $json.current_prompt || 'Use prompts/v1_system_prompt.json contents from repo as current prompt.';\n\n  return [{ json: {\n    call: $json,\n    current_prompt: currentPrompt,\n    rubric\n  }}];\n} catch (error) {\n  return [{ json: { error: String(error), raw_call: $json } }];\n}"
+      },
+      "id": "code-prepare-inputs",
+      "name": "Code Prepare Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 320],
+      "notes": "Loads current prompt context and embeds rubric object for judge call.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-goog-api-key", "value": "={{$env.GEMINI_API_KEY}}" },
+            { "name": "Content-Type",   "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  system_instruction: {\n    parts: [{\n      text: `You are an expert call center quality analyst evaluating AI voice agent performance.\n\nYou will receive:\n1. A full call transcript or call details\n2. The system prompt the agent was using\n3. The scoring rubric with 6 dimensions\n\nYour job:\n1. Score each dimension 1-5 with a brief justification\n2. Calculate the weighted total score (0.0 to 5.0)\n3. Identify the TOP 3 specific failure points in the conversation\n   - Quote the exact transcript moment if available\n   - Explain what went wrong\n   - Suggest the specific prompt addition that would fix it\n4. Identify what the agent did WELL (reinforce in next version)\n5. Check if the agent asked for information already given — flag it as a failure if so\n6. Output structured JSON ONLY, no other text`\n    }]\n  },\n  contents: [{\n    role: 'user',\n    parts: [{\n      text: `CALL DATA:\\n${JSON.stringify($json.call, null, 2)}\\n\\nCURRENT PROMPT:\\n${$json.current_prompt}\\n\\nRUBRIC:\\n${JSON.stringify($json.rubric, null, 2)}\\n\\nReturn JSON with keys: scores (object with each dimension name -> {score, justification}), weighted_total, top_failure_points (array of {moment, problem, fix}), strengths_to_preserve (array of strings), prompt_fix_suggestions (array of strings).`\n    }]\n  }]\n} }}",
+        "options": { "ignoreResponseCode": true }
+      },
+      "id": "http-judge",
+      "name": "HTTP Judge Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 320],
+      "notes": "Calls Gemini judge model with call data, current prompt, and rubric.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const response = $json;\n  const raw = response.candidates?.[0]?.content?.parts?.[0]?.text || '';\n  let parsed = null;\n\n  const attemptParse = (value) => {\n    const trimmed = String(value || '').trim();\n    const cleaned = trimmed.startsWith('```')\n      ? trimmed.replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim()\n      : trimmed;\n    const start = cleaned.indexOf('{');\n    const end = cleaned.lastIndexOf('}');\n    const jsonText = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;\n    return JSON.parse(jsonText);\n  };\n\n  try {\n    parsed = attemptParse(raw);\n  } catch (firstError) {\n    try {\n      parsed = attemptParse(raw.replace(/\\n/g, '\\n'));\n    } catch (secondError) {\n      return [{ json: { parse_error: String(secondError), raw_judge_text: raw, judge_raw_response: response } }];\n    }\n  }\n\n  return [{ json: { judge: parsed, judge_raw_response: response } }];\n} catch (error) {\n  return [{ json: { parse_error: String(error), judge_raw_response: $json } }];\n}"
+      },
+      "id": "code-parse-judge",
+      "name": "Code Parse Judge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1030, 320],
+      "notes": "Parses judge JSON safely with retry-style fallback parsing.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-goog-api-key", "value": "={{$env.GEMINI_API_KEY}}" },
+            { "name": "Content-Type",   "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  system_instruction: {\n    parts: [{\n      text: `You are a prompt engineer specializing in voice AI agent optimization.\n\nYou will receive:\n1. The current system prompt (version N)\n2. The judge's evaluation with failure points and suggested fixes\n\nYour job:\n1. Apply ONLY the fixes the judge recommended — do not rewrite unrelated sections\n2. Preserve everything that scored well (4-5)\n3. Add new objection handlers for identified gaps\n4. Keep the total prompt under 600 tokens (voice latency constraint)\n5. IMPORTANT: Preserve the conversation-history guard — 'Never re-ask information the patient has already given.'\n6. IMPORTANT: Preserve the doctor list, the show_confirmation trigger, and the TURN-TAKING RULES sections verbatim\n7. Output the complete revised prompt\n8. Output a changelog: bullet points of what changed and why (max 5 bullets, be specific)\n\nOutput JSON ONLY with keys: revised_prompt (string), changelog (array of strings).`\n    }]\n  },\n  contents: [{\n    role: 'user',\n    parts: [{\n      text: `CURRENT PROMPT:\\n${$node['Code Prepare Inputs'].json.current_prompt}\\n\\nJUDGE OUTPUT:\\n${JSON.stringify($json.judge || {}, null, 2)}`\n    }]\n  }]\n} }}",
+        "options": { "ignoreResponseCode": true }
+      },
+      "id": "http-prompt-reviser",
+      "name": "HTTP Prompt Reviser",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1290, 320],
+      "notes": "Generates revised system prompt based on judge findings. Preserves critical sections.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const callPayload = $node['Code Prepare Inputs'].json.call || {};\n  const judge = $node['Code Parse Judge'].json.judge || {};\n  const reviserRaw = $json.candidates?.[0]?.content?.parts?.[0]?.text || '';\n\n  let reviser = { revised_prompt: $node['Code Prepare Inputs'].json.current_prompt, changelog: ['No revision output parsed.'] };\n  try {\n    const start = reviserRaw.indexOf('{');\n    const end = reviserRaw.lastIndexOf('}');\n    const maybeJson = start >= 0 && end > start ? reviserRaw.slice(start, end + 1) : reviserRaw;\n    reviser = JSON.parse(maybeJson);\n  } catch (e) {\n    reviser = { revised_prompt: reviserRaw || $node['Code Prepare Inputs'].json.current_prompt, changelog: ['Fallback parse path used.'] };\n  }\n\n  // Derive next version number\n  const currentVersion = callPayload.prompt_version || 'v1';\n  const vMatch = String(currentVersion).match(/(\\d+)/);\n  const nextNum = vMatch ? parseInt(vMatch[1]) + 1 : 2;\n  const nextVersion = 'v' + nextNum;\n\n  const analysisReport = {\n    iteration: callPayload.iteration || null,\n    calls_analyzed: [callPayload.call_id || 'unknown_call'],\n    prompt_version_evaluated: currentVersion,\n    aggregate_scores: Object.assign({}, judge.scores || {}, { weighted_total: judge.weighted_total || null }),\n    top_failure_points: judge.top_failure_points || [],\n    strengths_to_preserve: judge.strengths_to_preserve || [],\n    prompt_changes: {\n      from_version: currentVersion,\n      to_version: nextVersion,\n      changelog: reviser.changelog || []\n    },\n    timestamp: new Date().toISOString()\n  };\n\n  const promptVersion = {\n    version: nextVersion,\n    created_at: new Date().toISOString(),\n    created_by: 'n8n_analysis_workflow',\n    token_count: Math.ceil(String(reviser.revised_prompt || '').length / 4),\n    changelog: Array.isArray(reviser.changelog) ? reviser.changelog.join(' | ') : String(reviser.changelog || ''),\n    changelog_list: Array.isArray(reviser.changelog) ? reviser.changelog : [String(reviser.changelog || '')],\n    prompt: reviser.revised_prompt || '',\n    metadata: {\n      avg_score_during_use: null,\n      calls_made_with_this_version: 0,\n      replaced_by: null,\n      weighted_total_trigger: judge.weighted_total || null\n    }\n  };\n\n  const callLog = Object.assign({}, callPayload, {\n    judge_scores: judge.scores || {},\n    weighted_total: judge.weighted_total || null,\n    prompt_fix_suggestions: judge.prompt_fix_suggestions || []\n  });\n\n  return [{ json: {\n    call_log: callLog,\n    analysis_report: analysisReport,\n    prompt_version: promptVersion,\n    revised_prompt: promptVersion.prompt\n  }}];\n} catch (error) {\n  return [{ json: { error: String(error), raw_call: $node['Code Prepare Inputs'].json.call || {} } }];\n}"
+      },
+      "id": "code-format-outputs",
+      "name": "Code Format Outputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 320],
+      "notes": "Builds call log, analysis report, and next prompt version payloads. Derives next version number automatically.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{'https://api.elevenlabs.io/v1/convai/agents/' + $env.ELEVENLABS_AGENT_ID}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "xi-api-key",    "value": "={{$env.ELEVENLABS_API_KEY}}" },
+            { "name": "Content-Type",  "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { conversation_config: { agent: { prompt: { prompt: $json.revised_prompt } } } } }}",
+        "options": { "ignoreResponseCode": true }
+      },
+      "id": "http-update-agent",
+      "name": "HTTP Update Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1820, 320],
+      "notes": "Updates ElevenLabs agent prompt so next call uses revised instructions.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/report",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  prompt_version: $node['Code Format Outputs'].json.prompt_version,\n  analysis_report: $node['Code Format Outputs'].json.analysis_report,\n  call_log: $node['Code Format Outputs'].json.call_log\n} }}",
+        "options": { "ignoreResponseCode": true, "timeout": 5000 }
+      },
+      "id": "http-report-local",
+      "name": "HTTP Report Local",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2060, 320],
+      "notes": "POSTs analysis results to local web server for UI status display and file archiving. Non-blocking (ignores response code).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, prompt_version: $node['Code Format Outputs'].json.prompt_version.version, score_summary: $node['Code Format Outputs'].json.analysis_report.aggregate_scores, changelog: $node['Code Format Outputs'].json.prompt_version.changelog_list, call_log: $node['Code Format Outputs'].json.call_log, analysis_report: $node['Code Format Outputs'].json.analysis_report, prompt_version_payload: $node['Code Format Outputs'].json.prompt_version } }}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2300, 320],
+      "notes": "Returns score summary, new prompt version metadata, and changelog.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Webhook Analyze Call":  { "main": [[{ "node": "Code Prepare Inputs",  "type": "main", "index": 0 }]] },
+    "Code Prepare Inputs":   { "main": [[{ "node": "HTTP Judge Gemini",    "type": "main", "index": 0 }]] },
+    "HTTP Judge Gemini":     { "main": [[{ "node": "Code Parse Judge",     "type": "main", "index": 0 }]] },
+    "Code Parse Judge":      { "main": [[{ "node": "HTTP Prompt Reviser",  "type": "main", "index": 0 }]] },
+    "HTTP Prompt Reviser":   { "main": [[{ "node": "Code Format Outputs",  "type": "main", "index": 0 }]] },
+    "Code Format Outputs":   { "main": [[{ "node": "HTTP Update Agent",    "type": "main", "index": 0 }]] },
+    "HTTP Update Agent":     { "main": [[{ "node": "HTTP Report Local",    "type": "main", "index": 0 }]] },
+    "HTTP Report Local":     { "main": [[{ "node": "Respond Success",      "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

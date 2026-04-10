@@ -1,0 +1,40 @@
+{
+  "available_slots": [
+    {
+      "date": "2026-04-13",
+      "time": "10:00 AM",
+      "provider": "Dr. Emily Chen",
+      "type": "New Patient"
+    },
+    {
+      "date": "2026-04-13",
+      "time": "1:30 PM",
+      "provider": "Dr. James Park",
+      "type": "Follow-up"
+    },
+    {
+      "date": "2026-04-14",
+      "time": "9:00 AM",
+      "provider": "Dr. Emily Chen",
+      "type": "New Patient"
+    },
+    {
+      "date": "2026-04-14",
+      "time": "2:30 PM",
+      "provider": "Dr. James Park",
+      "type": "New Patient"
+    },
+    {
+      "date": "2026-04-15",
+      "time": "9:00 AM",
+      "provider": "Dr. Emily Chen",
+      "type": "New Patient"
+    },
+    {
+      "date": "2026-04-15",
+      "time": "3:00 PM",
+      "provider": "Dr. James Park",
+      "type": "Follow-up"
+    }
+  ]
+}

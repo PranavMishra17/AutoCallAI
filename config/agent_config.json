@@ -1,0 +1,145 @@
+{
+  "name": "AutoCallAI - Greenfield Medical",
+  "agent_id": "${ELEVENLABS_AGENT_ID}",
+  "conversation_config": {
+    "agent": {
+      "first_message": "${ELEVENLABS_FIRST_MESSAGE}",
+      "language": "en",
+      "prompt": {
+        "prompt": "${SYSTEM_PROMPT}",
+        "llm": "gemini-2.0-flash",
+        "temperature": 0.7,
+        "max_tokens": 300,
+        "tools": [
+          {
+            "type": "webhook",
+            "name": "check_availability",
+            "description": "Check available appointment slots for a doctor. Pass optional doctor_name (e.g. 'Dr. Emily Chen') and/or day_of_week (e.g. 'monday') to filter results. Returns free slots only.",
+            "api_schema": {
+              "url": "${N8N_CALL_HANDLER_WEBHOOK_URL}",
+              "method": "POST",
+              "request_body_schema": {
+                "type": "object",
+                "properties": {
+                  "tool_name": {
+                    "type": "string",
+                    "description": "Always set to 'check_availability'"
+                  },
+                  "doctor_name": {
+                    "type": "string",
+                    "description": "Name of the doctor to filter by, e.g. 'Dr. Emily Chen'. Optional."
+                  },
+                  "day_of_week": {
+                    "type": "string",
+                    "enum": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+                    "description": "Day of the week to check availability for. Optional."
+                  },
+                  "appointment_type": {
+                    "type": "string",
+                    "description": "Type of appointment: 'New Patient' or 'Follow-up'. Optional."
+                  }
+                },
+                "required": ["tool_name"]
+              }
+            }
+          },
+          {
+            "type": "webhook",
+            "name": "record_outcome",
+            "description": "Record the call outcome when the conversation is naturally ending. Call this with full details of what was discussed.",
+            "api_schema": {
+              "url": "${N8N_CALL_HANDLER_WEBHOOK_URL}",
+              "method": "POST",
+              "request_body_schema": {
+                "type": "object",
+                "properties": {
+                  "tool_name": {
+                    "type": "string",
+                    "description": "Always set to 'record_outcome'"
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "enum": ["BOOKED", "CALLBACK", "DECLINED", "DROPPED", "TRANSFERRED"],
+                    "description": "Call outcome classification"
+                  },
+                  "patient_name": {
+                    "type": "string",
+                    "description": "Patient's full name if collected"
+                  },
+                  "doctor_name": {
+                    "type": "string",
+                    "description": "Doctor booked with, if applicable"
+                  },
+                  "appointment_day": {
+                    "type": "string",
+                    "description": "Day of appointment if booked"
+                  },
+                  "appointment_time": {
+                    "type": "string",
+                    "description": "Time of appointment if booked"
+                  },
+                  "insurance": {
+                    "type": "string",
+                    "description": "Insurance carrier if provided"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "description": "Any other relevant notes about the call"
+                  }
+                },
+                "required": ["tool_name", "outcome"]
+              }
+            }
+          },
+          {
+            "type": "client",
+            "name": "show_confirmation",
+            "description": "Display a booking confirmation card on screen. Call this ONCE when the appointment is fully confirmed — you have patient name, doctor, day, time, and insurance.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "patient_name": {
+                  "type": "string",
+                  "description": "Patient's full name"
+                },
+                "doctor_name": {
+                  "type": "string",
+                  "description": "Doctor's name, e.g. 'Dr. Emily Chen'"
+                },
+                "specialty": {
+                  "type": "string",
+                  "description": "Doctor's specialty, e.g. 'Family Medicine'"
+                },
+                "day": {
+                  "type": "string",
+                  "description": "Day of appointment, e.g. 'Monday'"
+                },
+                "time": {
+                  "type": "string",
+                  "description": "Time of appointment, e.g. '9:00 AM'"
+                },
+                "appointment_type": {
+                  "type": "string",
+                  "description": "Type of appointment, e.g. 'New Patient'"
+                },
+                "insurance": {
+                  "type": "string",
+                  "description": "Insurance carrier name"
+                }
+              },
+              "required": ["patient_name", "doctor_name", "day", "time"]
+            }
+          }
+        ]
+      }
+    },
+    "tts": {
+      "model_id": "eleven_turbo_v2",
+      "voice_id": "${ELEVENLABS_VOICE_ID}"
+    },
+    "turn": {
+      "mode": "turn",
+      "silence_threshold_ms": 400
+    }
+  }
+}

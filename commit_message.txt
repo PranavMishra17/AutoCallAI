@@ -1,0 +1,74 @@
+feat: voice UI overhaul, schedule integration, self-improving loop closure, editorial redesign
+
+AGENT & PROMPT
+- Added show_confirmation client tool to config/agent_config.json (type: client, triggers browser-side confirmation card)
+- Upgraded check_availability and record_outcome to full api_schema format with request_body_schema so LLM knows exactly which fields to extract
+- Updated prompts/v1_system_prompt.json with:
+    - Embedded doctor roster (agent answers roster questions without tool calls)
+    - Conversation-history guard: "NEVER re-ask information the patient has already given in this call"
+    - show_confirmation trigger instruction (fires once all 5 booking details are confirmed)
+    - Doctor availability awareness (which days each doctor works, embedded directly)
+
+SCHEDULE
+- Added config/schedule.json — static Mon–Fri schedule for 4 doctors (Emily Chen, James Park, Priya Sharma, Marcus Webb) with per-day free/booked slots
+- Each doctor entry includes specialty, appointment types, and day-indexed slot arrays
+
+N8N WORKFLOWS (both require re-import + re-publish)
+- workflow_call_handler.json: rewrote check_availability code node to filter by doctor_name and/or day_of_week from tool parameters; only returns free slots; added get_schedule_overview route; improved record_outcome to capture all appointment fields (patient_name, doctor_name, appointment_day, appointment_time, insurance, notes)
+- workflow_analysis.json: added HTTP Report Local node (POST localhost:8000/api/report after agent update); strengthened prompt reviser to preserve conversation-history guard and doctor list after each revision; analysis now auto-increments prompt version number
+
+WEB SERVER
+- New file: web/server.py — Python HTTP server (replaces python -m http.server)
+    - GET / → serves web/index.html and static files from web/
+    - GET /api/status → returns current loop state (version, score, changelog, history) from web/iteration_status.json
+    - POST /api/report → saves call logs to calls/, analysis reports to analysis/, prompt versions to prompts/, updates iteration_status.json
+
+WEB UI — full rewrite of web/index.html
+- THEME: replaced dark glassmorphism with warm editorial palette (cream #FDF6ED, peach #E8A07E, terra #8B5A3C, espresso #3A1E0E)
+- TYPOGRAPHY: Cormorant Garamond (serif display) + DM Sans (UI) — no longer uses Inter
+- LANDING PAGE (new):
+    - Full-viewport warm cream-to-peach gradient hero
+    - Large serif "Meet Sarah, your medical receptionist" headline with italic peach accent
+    - Three animated floating preview cards (next available, prompt version, specialties)
+    - Organic radial blob decorations with CSS float animation
+    - Wavy SVG divider between hero and features section
+    - Three feature cards (Natural Voice, Schedule Lookup, Self-Improving AI)
+    - Dark espresso footer
+    - Smooth fade-slide page transition → app on CTA click
+- APP — CALL TAB:
+    - Multi-layer canvas blob visualizer (3–4 concentric organic blobs with dual-oscillator sin-wave distortion)
+    - Blob modes: idle (muted peach), listening (warm sand), speaking (deep coral), connection (gentle)
+    - Blob corona glow responds to call state with CSS animations
+    - Live transcript (ElevenLabs JS SDK via CDN ESM import): onMessage, onUserTranscript, onAgentSpeaking, onUserSpeaking, onError, onDisconnect callbacks
+    - Brown serif state label changes: waiting / connecting / listening / speaking / ended
+    - Sidebar: practice info pills, appointment confirmation panel, loop mini-status
+    - Doctor card highlight when agent mentions a doctor name in transcript
+- APP — DOCTORS TAB:
+    - 4 cards with initials avatars (warm terra gradients per doctor)
+    - Specialty badge pill in peach
+    - Mon–Fri day selector tabs (greyed out unavailable days)
+    - Free slots (green) / booked slots (line-through sand) pills
+    - Hover lift + highlight on border when mentioned in transcript
+- APP — AI LOOP TAB:
+    - Prompt version, score (animated SVG ring), calls analyzed metrics
+    - Pipeline flow diagram showing all 8 steps from call to UI refresh
+    - Prompt change history feed (polled from /api/status every 14 s)
+    - Each entry shows version badge, score badge (color-coded), call outcome, timestamp, and individual change bullets
+    - Toast notification when version bumps between poll cycles
+- APP — CONFIRMATION CARD (sidebar):
+    - Hidden until show_confirmation client tool fires
+    - Animated slide-in (cubic-bezier spring)
+    - Shows patient, doctor, specialty, day, time, type, insurance, location
+    - "Book Another Appointment" resets transcript + card
+
+README
+- Added Quickstart TL;DR section at the top (6 commands to go from zero to live)
+- Updated architecture diagram to include show_confirmation client tool and full self-improving loop chain through HTTP Report Local
+- Added table: prerequisites with version notes
+- Step 5 configuration table: which n8n node needs which secret
+- Step 7 expanded: server endpoint table, agent ID UI setup instruction, detailed UI overview per tab
+- Step 8 example call script updated with show_confirmation expected behavior
+- New section: Self-Improving Loop — How It Works (with judge rubric + weights)
+- New section: Doctor Schedule Reference table
+- New section: Project Structure tree (all files with descriptions)
+- Updated Common Errors: added /api/report not receiving, microphone permissions, show_confirmation not appearing

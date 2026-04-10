@@ -1,0 +1,40 @@
+{
+  "scenarios": [
+    {
+      "name": "easy_booking",
+      "character": "Cooperative new patient",
+      "key_objection": "None",
+      "expected_v1_failure": "Should succeed (baseline)"
+    },
+    {
+      "name": "insurance_concern",
+      "character": "Worried about cost",
+      "key_objection": "Does my insurance cover this?",
+      "expected_v1_failure": "Basic handling only"
+    },
+    {
+      "name": "doctor_hesitation",
+      "character": "Nervous about new doctor",
+      "key_objection": "I heard mixed reviews",
+      "expected_v1_failure": "No handler in v1"
+    },
+    {
+      "name": "time_pressure",
+      "character": "Very busy, impatient",
+      "key_objection": "I don't have time for this",
+      "expected_v1_failure": "No urgency reframe"
+    },
+    {
+      "name": "telehealth_request",
+      "character": "Prefers virtual visit",
+      "key_objection": "Can I just do video?",
+      "expected_v1_failure": "No alternative offering"
+    },
+    {
+      "name": "cancellation_save",
+      "character": "Wants to cancel existing",
+      "key_objection": "I want to cancel my appointment",
+      "expected_v1_failure": "Minimal retention effort"
+    }
+  ]
+}

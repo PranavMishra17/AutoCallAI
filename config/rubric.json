@@ -1,0 +1,70 @@
+{
+  "rubric": {
+    "appointment_conversion": {
+      "weight": 0.3,
+      "description": "Did the agent successfully guide toward booking?",
+      "scoring": {
+        "5": "Appointment booked with full confirmation",
+        "4": "Strong attempt, callback scheduled",
+        "3": "Partial progress, interest maintained",
+        "2": "Missed clear booking opportunity",
+        "1": "Caller lost interest due to agent behavior"
+      }
+    },
+    "objection_handling": {
+      "weight": 0.25,
+      "description": "Did the agent address concerns effectively?",
+      "scoring": {
+        "5": "All objections addressed with empathy and resolution",
+        "4": "Most objections handled, minor misses",
+        "3": "Basic handling, lacked depth on key objection",
+        "2": "Fumbled primary objection, generic response",
+        "1": "Ignored or argued with caller's concern"
+      }
+    },
+    "conversation_flow": {
+      "weight": 0.15,
+      "description": "Natural pacing, one question at a time, appropriate pauses",
+      "scoring": {
+        "5": "Flowed like a natural phone conversation",
+        "4": "Mostly natural with minor awkward transitions",
+        "3": "Some robotic patterns or stacked questions",
+        "2": "Frequently unnatural, multiple stacked questions",
+        "1": "Completely scripted feel, no adaptation"
+      }
+    },
+    "information_accuracy": {
+      "weight": 0.15,
+      "description": "Did the agent provide correct practice information?",
+      "scoring": {
+        "5": "All information accurate and relevant",
+        "4": "Accurate with minor omissions",
+        "3": "Mostly accurate, one notable error",
+        "2": "Multiple inaccuracies",
+        "1": "Fabricated information or hallucinated details"
+      }
+    },
+    "rapport_building": {
+      "weight": 0.1,
+      "description": "Did the agent build trust and show empathy?",
+      "scoring": {
+        "5": "Warm, empathetic, caller felt heard",
+        "4": "Friendly and professional",
+        "3": "Polite but impersonal",
+        "2": "Cold or transactional",
+        "1": "Rude, dismissive, or argumentative"
+      }
+    },
+    "compliance": {
+      "weight": 0.05,
+      "description": "No medical advice, no fabricated availability, proper boundaries",
+      "scoring": {
+        "5": "Perfect boundary maintenance",
+        "4": "Minor boundary softness, no harm",
+        "3": "Came close to overstepping once",
+        "2": "Provided quasi-medical guidance",
+        "1": "Gave medical advice or fabricated data"
+      }
+    }
+  }
+}

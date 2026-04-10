@@ -1,0 +1,92 @@
+{
+  "doctors": [
+    {
+      "name": "Dr. Emily Chen",
+      "specialty": "Family Medicine",
+      "appointment_types": ["New Patient", "Follow-up"],
+      "works_days": ["monday", "tuesday", "wednesday", "thursday"],
+      "schedule": {
+        "monday": {
+          "free": ["9:00 AM", "10:30 AM", "2:00 PM", "3:30 PM"],
+          "booked": ["11:00 AM", "1:00 PM"]
+        },
+        "tuesday": {
+          "free": ["8:30 AM", "1:30 PM", "4:00 PM"],
+          "booked": ["10:00 AM", "11:30 AM", "2:30 PM"]
+        },
+        "wednesday": {
+          "free": ["9:00 AM", "11:00 AM", "3:00 PM"],
+          "booked": ["10:00 AM", "2:00 PM", "4:00 PM"]
+        },
+        "thursday": {
+          "free": ["8:30 AM", "10:00 AM", "2:30 PM"],
+          "booked": ["9:30 AM", "11:30 AM", "1:00 PM", "3:30 PM"]
+        }
+      }
+    },
+    {
+      "name": "Dr. James Park",
+      "specialty": "Internal Medicine",
+      "appointment_types": ["New Patient", "Follow-up", "Consultation"],
+      "works_days": ["tuesday", "wednesday", "thursday", "friday"],
+      "schedule": {
+        "tuesday": {
+          "free": ["9:00 AM", "11:00 AM", "2:00 PM"],
+          "booked": ["10:00 AM", "1:00 PM", "3:00 PM"]
+        },
+        "wednesday": {
+          "free": ["8:30 AM", "10:30 AM", "3:30 PM"],
+          "booked": ["9:30 AM", "1:30 PM", "4:00 PM"]
+        },
+        "thursday": {
+          "free": ["9:00 AM", "1:00 PM", "4:00 PM"],
+          "booked": ["10:30 AM", "11:30 AM", "2:30 PM"]
+        },
+        "friday": {
+          "free": ["8:30 AM", "10:00 AM", "2:00 PM", "3:30 PM"],
+          "booked": ["9:00 AM", "11:30 AM"]
+        }
+      }
+    },
+    {
+      "name": "Dr. Priya Sharma",
+      "specialty": "Pediatrics",
+      "appointment_types": ["New Patient", "Well-Child Visit", "Follow-up"],
+      "works_days": ["monday", "wednesday", "friday"],
+      "schedule": {
+        "monday": {
+          "free": ["9:30 AM", "11:00 AM", "2:30 PM"],
+          "booked": ["10:30 AM", "1:00 PM", "3:30 PM"]
+        },
+        "wednesday": {
+          "free": ["8:30 AM", "10:00 AM", "1:30 PM", "4:00 PM"],
+          "booked": ["9:30 AM", "3:00 PM"]
+        },
+        "friday": {
+          "free": ["9:00 AM", "11:30 AM", "2:00 PM"],
+          "booked": ["10:00 AM", "1:00 PM", "3:00 PM"]
+        }
+      }
+    },
+    {
+      "name": "Dr. Marcus Webb",
+      "specialty": "Orthopedics",
+      "appointment_types": ["New Patient", "Follow-up", "Post-Op"],
+      "works_days": ["monday", "tuesday", "thursday"],
+      "schedule": {
+        "monday": {
+          "free": ["10:00 AM", "1:00 PM", "3:00 PM"],
+          "booked": ["9:00 AM", "11:00 AM", "2:00 PM"]
+        },
+        "tuesday": {
+          "free": ["8:30 AM", "11:30 AM", "3:30 PM"],
+          "booked": ["9:30 AM", "10:30 AM", "1:30 PM"]
+        },
+        "thursday": {
+          "free": ["9:00 AM", "10:30 AM", "2:00 PM", "4:00 PM"],
+          "booked": ["11:30 AM", "1:00 PM", "3:00 PM"]
+        }
+      }
+    }
+  ]
+}
