@@ -2347,12 +2347,16 @@
       }
 
       setCallUI("connecting");
+      
+      // Clear transcript area for new calls
+      document.getElementById("transcript-scroll").innerHTML = '';
 
       try {
         conversation = await ElevenLabsConversation.startSession({
           agentId: "agent_0901knw8qf26eddbzs594g49ch22",
           clientTools: {
             show_confirmation: (params) => {
+              console.log("[Client Tool Executed] show_confirmation with params:", params);
               let p = params;
               if (typeof p === "string") {
                 try { p = JSON.parse(p); } catch (e) { }
@@ -2369,8 +2373,12 @@
             endCleanup();
           },
           onMessage: (message) => {
+            console.log("[ElevenLabs] Message received:", message);
             const text = message.message || message.text || "";
             const src = message.source || message.role || "";
+            if (message.type === "client_tool_call") {
+              console.log("[ElevenLabs] Agent invoked client tool:", message.tool_name, message.tool_parameters || message.parameters);
+            }
             if (!text) return;
             if (src === "ai" || src === "agent" || src === "assistant") {
               addTranscript("agent", text, false);

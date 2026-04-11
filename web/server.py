@@ -58,7 +58,8 @@ def _load_status() -> dict:
         "changelog": [],
         "last_updated": None,
         "total_calls_analyzed": 0,
-        "history": []
+        "history": [],
+        "n8n_webhook": os.environ.get("N8N_CALL_HANDLER_WEBHOOK_URL", "http://localhost:5678/webhook/call-handler")
     }
 
 
