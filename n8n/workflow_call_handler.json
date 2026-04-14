@@ -12,179 +12,220 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [220, 300],
-      "notes": "Receives tool invocations from ElevenLabs during live calls. Handles: check_availability, get_schedule_overview, record_outcome.",
+      "notes": "Receives tool invocations from ElevenLabs during live calls.",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "dataType": "string",
-        "value1": "={{$json[\"tool_name\"]}}",
-        "rules": [
-          { "operation": "equal", "value2": "check_availability" },
-          { "operation": "equal", "value2": "record_outcome" },
-          { "operation": "equal", "value2": "get_schedule_overview" }
-        ]
+        "jsCode": "const actual = $json.body || $json;\nconst toolName = actual.tool_name || actual.name || '';\nconsole.log('[Normalize] tool_name:', toolName, 'full body:', JSON.stringify(actual));\nreturn [{ json: { ...actual, tool_name: toolName } }];"
       },
-      "id": "switch-tool-name",
-      "name": "Switch Tool Name",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
-      "position": [460, 300],
-      "notes": "Routes requests by tool_name to the proper handler branch.",
+      "id": "code-normalize",
+      "name": "Code Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300],
+      "notes": "Flattens ElevenLabs body and extracts tool_name.",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "try {\n  // ── SCHEDULE DATA ── (mirrors config/schedule.json)\n  const SCHEDULE = {\n    'Dr. Emily Chen': {\n      specialty: 'Family Medicine',\n      appointment_types: ['New Patient', 'Follow-up'],\n      schedule: {\n        monday:    { free: ['9:00 AM','10:30 AM','2:00 PM','3:30 PM'], booked: ['11:00 AM','1:00 PM'] },\n        tuesday:   { free: ['8:30 AM','1:30 PM','4:00 PM'],            booked: ['10:00 AM','11:30 AM','2:30 PM'] },\n        wednesday: { free: ['9:00 AM','11:00 AM','3:00 PM'],            booked: ['10:00 AM','2:00 PM','4:00 PM'] },\n        thursday:  { free: ['8:30 AM','10:00 AM','2:30 PM'],            booked: ['9:30 AM','11:30 AM','1:00 PM','3:30 PM'] }\n      }\n    },\n    'Dr. James Park': {\n      specialty: 'Internal Medicine',\n      appointment_types: ['New Patient', 'Follow-up', 'Consultation'],\n      schedule: {\n        tuesday:   { free: ['9:00 AM','11:00 AM','2:00 PM'],   booked: ['10:00 AM','1:00 PM','3:00 PM'] },\n        wednesday: { free: ['8:30 AM','10:30 AM','3:30 PM'],   booked: ['9:30 AM','1:30 PM','4:00 PM'] },\n        thursday:  { free: ['9:00 AM','1:00 PM','4:00 PM'],    booked: ['10:30 AM','11:30 AM','2:30 PM'] },\n        friday:    { free: ['8:30 AM','10:00 AM','2:00 PM','3:30 PM'], booked: ['9:00 AM','11:30 AM'] }\n      }\n    },\n    'Dr. Priya Sharma': {\n      specialty: 'Pediatrics',\n      appointment_types: ['New Patient', 'Well-Child Visit', 'Follow-up'],\n      schedule: {\n        monday:    { free: ['9:30 AM','11:00 AM','2:30 PM'],              booked: ['10:30 AM','1:00 PM','3:30 PM'] },\n        wednesday: { free: ['8:30 AM','10:00 AM','1:30 PM','4:00 PM'],    booked: ['9:30 AM','3:00 PM'] },\n        friday:    { free: ['9:00 AM','11:30 AM','2:00 PM'],              booked: ['10:00 AM','1:00 PM','3:00 PM'] }\n      }\n    },\n    'Dr. Marcus Webb': {\n      specialty: 'Orthopedics',\n      appointment_types: ['New Patient', 'Follow-up', 'Post-Op'],\n      schedule: {\n        monday:   { free: ['10:00 AM','1:00 PM','3:00 PM'],    booked: ['9:00 AM','11:00 AM','2:00 PM'] },\n        tuesday:  { free: ['8:30 AM','11:30 AM','3:30 PM'],    booked: ['9:30 AM','10:30 AM','1:30 PM'] },\n        thursday: { free: ['9:00 AM','10:30 AM','2:00 PM','4:00 PM'], booked: ['11:30 AM','1:00 PM','3:00 PM'] }\n      }\n    }\n  };\n\n  const body = $json;\n  const params = body.parameters || body;\n  const rawDoctorName = (params.doctor_name || '').trim();\n  const rawDay = (params.day_of_week || '').trim().toLowerCase();\n\n  const results = [];\n\n  for (const [doctorName, info] of Object.entries(SCHEDULE)) {\n    // Filter by doctor if specified (case-insensitive partial match)\n    if (rawDoctorName && !doctorName.toLowerCase().includes(rawDoctorName.toLowerCase())) continue;\n\n    const days = rawDay ? [rawDay] : Object.keys(info.schedule);\n    for (const day of days) {\n      const dayData = info.schedule[day];\n      if (!dayData) continue;\n      for (const time of dayData.free) {\n        results.push({\n          doctor: doctorName,\n          specialty: info.specialty,\n          day: day.charAt(0).toUpperCase() + day.slice(1),\n          time: time,\n          appointment_types_available: info.appointment_types\n        });\n      }\n    }\n  }\n\n  if (results.length === 0) {\n    return [{ json: {\n      available_slots: [],\n      message: rawDoctorName\n        ? `No available slots found for ${rawDoctorName}${rawDay ? ' on ' + rawDay : ''}.`\n        : 'No available slots found for the requested criteria.',\n      success: true\n    }}];\n  }\n\n  return [{ json: { available_slots: results, total: results.length, success: true } }];\n} catch (error) {\n  return [{ json: { success: false, error: String(error) } }];\n}"
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {
+              "id": "if-check-avail",
+              "leftValue": "={{ $json.tool_name }}",
+              "rightValue": "check_availability",
+              "operator": {"type": "string", "operation": "equals", "name": "filter.operator.equals"}
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-check-availability",
+      "name": "IF check_availability",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300],
+      "notes": "True → check_availability branch. False → next IF.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {
+              "id": "if-record-outcome",
+              "leftValue": "={{ $json.tool_name }}",
+              "rightValue": "record_outcome",
+              "operator": {"type": "string", "operation": "equals", "name": "filter.operator.equals"}
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-record-outcome",
+      "name": "IF record_outcome",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 500],
+      "notes": "True → record_outcome branch. False → next IF.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {
+              "id": "if-schedule-overview",
+              "leftValue": "={{ $json.tool_name }}",
+              "rightValue": "get_schedule_overview",
+              "operator": {"type": "string", "operation": "equals", "name": "filter.operator.equals"}
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-schedule-overview",
+      "name": "IF get_schedule_overview",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 700],
+      "notes": "True → schedule overview branch. False → unsupported.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const SCHEDULE = {\n    'Dr. Emily Chen': {\n      specialty: 'Family Medicine',\n      appointment_types: ['New Patient', 'Follow-up'],\n      schedule: {\n        monday:    { free: ['9:00 AM','10:30 AM','2:00 PM','3:30 PM'], booked: ['11:00 AM','1:00 PM'] },\n        tuesday:   { free: ['8:30 AM','1:30 PM','4:00 PM'],            booked: ['10:00 AM','11:30 AM','2:30 PM'] },\n        wednesday: { free: ['9:00 AM','11:00 AM','3:00 PM'],            booked: ['10:00 AM','2:00 PM','4:00 PM'] },\n        thursday:  { free: ['8:30 AM','10:00 AM','2:30 PM'],            booked: ['9:30 AM','11:30 AM','1:00 PM','3:30 PM'] }\n      }\n    },\n    'Dr. James Park': {\n      specialty: 'Internal Medicine',\n      appointment_types: ['New Patient', 'Follow-up', 'Consultation'],\n      schedule: {\n        tuesday:   { free: ['9:00 AM','11:00 AM','2:00 PM'],   booked: ['10:00 AM','1:00 PM','3:00 PM'] },\n        wednesday: { free: ['8:30 AM','10:30 AM','3:30 PM'],   booked: ['9:30 AM','1:30 PM','4:00 PM'] },\n        thursday:  { free: ['9:00 AM','1:00 PM','4:00 PM'],    booked: ['10:30 AM','11:30 AM','2:30 PM'] },\n        friday:    { free: ['8:30 AM','10:00 AM','2:00 PM','3:30 PM'], booked: ['9:00 AM','11:30 AM'] }\n      }\n    },\n    'Dr. Priya Sharma': {\n      specialty: 'Pediatrics',\n      appointment_types: ['New Patient', 'Well-Child Visit', 'Follow-up'],\n      schedule: {\n        monday:    { free: ['9:30 AM','11:00 AM','2:30 PM'],              booked: ['10:30 AM','1:00 PM','3:30 PM'] },\n        wednesday: { free: ['8:30 AM','10:00 AM','1:30 PM','4:00 PM'],    booked: ['9:30 AM','3:00 PM'] },\n        friday:    { free: ['9:00 AM','11:30 AM','2:00 PM'],              booked: ['10:00 AM','1:00 PM','3:00 PM'] }\n      }\n    },\n    'Dr. Marcus Webb': {\n      specialty: 'Orthopedics',\n      appointment_types: ['New Patient', 'Follow-up', 'Post-Op'],\n      schedule: {\n        monday:   { free: ['10:00 AM','1:00 PM','3:00 PM'],    booked: ['9:00 AM','11:00 AM','2:00 PM'] },\n        tuesday:  { free: ['8:30 AM','11:30 AM','3:30 PM'],    booked: ['9:30 AM','10:30 AM','1:30 PM'] },\n        thursday: { free: ['9:00 AM','10:30 AM','2:00 PM','4:00 PM'], booked: ['11:30 AM','1:00 PM','3:00 PM'] }\n      }\n    }\n  };\n\n  const rawDoctorName = ($json.doctor_name || '').trim();\n  const rawDay = ($json.day_of_week || '').trim().toLowerCase();\n  const results = [];\n\n  for (const [doctorName, info] of Object.entries(SCHEDULE)) {\n    if (rawDoctorName && !doctorName.toLowerCase().includes(rawDoctorName.toLowerCase())) continue;\n    const days = rawDay ? [rawDay] : Object.keys(info.schedule);\n    for (const day of days) {\n      const dayData = info.schedule[day];\n      if (!dayData) continue;\n      for (const time of dayData.free) {\n        results.push({ doctor: doctorName, specialty: info.specialty, day: day.charAt(0).toUpperCase() + day.slice(1), time, appointment_types_available: info.appointment_types });\n      }\n    }\n  }\n\n  console.log('[Check Availability] doctor=' + rawDoctorName + ' day=' + rawDay + ' results=' + results.length);\n\n  if (results.length === 0) {\n    return [{ json: { available_slots: [], message: rawDoctorName ? `No available slots found for ${rawDoctorName}${rawDay ? ' on ' + rawDay : ''}.` : 'No available slots found.', success: true } }];\n  }\n  return [{ json: { available_slots: results, total: results.length, success: true } }];\n} catch (error) {\n  return [{ json: { success: false, error: String(error) } }];\n}"
       },
       "id": "code-check-availability",
       "name": "Code Check Availability",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [740, 120],
-      "notes": "Filters schedule by doctor_name and/or day_of_week from tool parameters. Returns only free slots.",
+      "position": [900, 220],
+      "notes": "Returns free slots filtered by doctor and/or day.",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "try {\n  const body = $json;\n  const payload = {\n    call_id: body.call_id || body.conversation_id || ('call_' + Date.now()),\n    outcome: body.outcome || (body.parameters && body.parameters.outcome) || 'UNKNOWN',\n    patient_name: body.patient_name || (body.parameters && body.parameters.patient_name) || null,\n    doctor_name: body.doctor_name || (body.parameters && body.parameters.doctor_name) || null,\n    appointment_day: body.appointment_day || (body.parameters && body.parameters.appointment_day) || null,\n    appointment_time: body.appointment_time || (body.parameters && body.parameters.appointment_time) || null,\n    insurance: body.insurance || (body.parameters && body.parameters.insurance) || null,\n    notes: body.notes || (body.parameters && body.parameters.notes) || null,\n    transcript: body.transcript || [],\n    duration_seconds: body.duration || body.duration_seconds || null,\n    timestamp: new Date().toISOString()\n  };\n  return [{ json: payload }];\n} catch (error) {\n  return [{ json: { success: false, error: String(error), raw: $json } }];\n}"
+        "jsCode": "try {\n  const body = $json;\n  const payload = {\n    call_id: body.call_id || body.conversation_id || ('call_' + Date.now()),\n    outcome: body.outcome || 'UNKNOWN',\n    patient_name: body.patient_name || null,\n    doctor_name: body.doctor_name || null,\n    appointment_day: body.appointment_day || null,\n    appointment_time: body.appointment_time || null,\n    insurance: body.insurance || null,\n    notes: body.notes || null,\n    transcript: body.transcript || [],\n    duration_seconds: body.duration_seconds || null,\n    timestamp: new Date().toISOString()\n  };\n  console.log('[Format Outcome] call_id=' + payload.call_id + ' outcome=' + payload.outcome);\n  return [{ json: payload }];\n} catch (error) {\n  return [{ json: { success: false, error: String(error) } }];\n}"
       },
       "id": "code-format-outcome",
       "name": "Code Format Outcome",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [740, 300],
-      "notes": "Normalizes outcome payload including patient and appointment details for analysis workflow.",
+      "position": [900, 500],
+      "notes": "Normalizes outcome payload for analysis workflow.",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "try {\n  const SCHEDULE = {\n    'Dr. Emily Chen':  { specialty: 'Family Medicine',  days: ['Mon','Tue','Wed','Thu'] },\n    'Dr. James Park':  { specialty: 'Internal Medicine', days: ['Tue','Wed','Thu','Fri'] },\n    'Dr. Priya Sharma':{ specialty: 'Pediatrics',        days: ['Mon','Wed','Fri'] },\n    'Dr. Marcus Webb': { specialty: 'Orthopedics',       days: ['Mon','Tue','Thu'] }\n  };\n  const overview = Object.entries(SCHEDULE).map(([name, info]) => ({\n    doctor: name,\n    specialty: info.specialty,\n    available_days: info.days\n  }));\n  return [{ json: { doctors: overview, success: true } }];\n} catch (error) {\n  return [{ json: { success: false, error: String(error) } }];\n}"
+        "jsCode": "const SCHEDULE = {\n  'Dr. Emily Chen':  { specialty: 'Family Medicine',  days: ['Mon','Tue','Wed','Thu'] },\n  'Dr. James Park':  { specialty: 'Internal Medicine', days: ['Tue','Wed','Thu','Fri'] },\n  'Dr. Priya Sharma':{ specialty: 'Pediatrics',        days: ['Mon','Wed','Fri'] },\n  'Dr. Marcus Webb': { specialty: 'Orthopedics',       days: ['Mon','Tue','Thu'] }\n};\nconst overview = Object.entries(SCHEDULE).map(([name, info]) => ({ doctor: name, specialty: info.specialty, available_days: info.days }));\nreturn [{ json: { doctors: overview, success: true } }];"
       },
       "id": "code-schedule-overview",
       "name": "Code Schedule Overview",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [740, 480],
-      "notes": "Returns the list of all doctors, their specialties, and working days.",
+      "position": [900, 700],
+      "notes": "Returns doctor list with specialties and days.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('[Unsupported] tool_name=' + $json.tool_name);\nreturn [{ json: { success: false, error: 'Unsupported tool_name: ' + ($json.tool_name || 'none') } }];"
+      },
+      "id": "code-unsupported-tool",
+      "name": "Code Unsupported Tool",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 860],
       "notesInFlow": true
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.N8N_ANALYSIS_WEBHOOK_URL}}",
+        "url": "https://paranoid17.app.n8n.cloud/webhook/analyze-call",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            { "name": "call_id",          "value": "={{$json.call_id}}" },
-            { "name": "outcome",          "value": "={{$json.outcome}}" },
-            { "name": "patient_name",     "value": "={{$json.patient_name}}" },
-            { "name": "doctor_name",      "value": "={{$json.doctor_name}}" },
-            { "name": "appointment_day",  "value": "={{$json.appointment_day}}" },
-            { "name": "appointment_time", "value": "={{$json.appointment_time}}" },
-            { "name": "insurance",        "value": "={{$json.insurance}}" },
-            { "name": "notes",            "value": "={{$json.notes}}" },
-            { "name": "transcript",       "value": "={{$json.transcript}}" },
-            { "name": "duration_seconds", "value": "={{$json.duration_seconds}}" },
-            { "name": "timestamp",        "value": "={{$json.timestamp}}" }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}",
         "options": {}
       },
       "id": "http-trigger-analysis",
       "name": "HTTP Trigger Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [980, 300],
-      "notes": "Forwards normalized call payload to analysis webhook workflow.",
+      "position": [1120, 500],
+      "notes": "Forwards normalized call payload to analysis webhook.",
       "notesInFlow": true
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{$json}}",
-        "options": {}
-      },
+      "parameters": { "respondWith": "json", "responseBody": "={{$json}}", "options": {} },
       "id": "respond-availability",
       "name": "Respond Availability",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1020, 120],
-      "notes": "Returns filtered availability JSON back to ElevenLabs tool call.",
-      "notesInFlow": true
+      "position": [1120, 220]
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { success: true, forwarded: true, analysis_response: $json } }}",
-        "options": {}
-      },
+      "parameters": { "respondWith": "json", "responseBody": "={{ { success: true, forwarded: true } }}", "options": {} },
       "id": "respond-record-outcome",
       "name": "Respond Record Outcome",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1240, 300],
-      "notes": "Acknowledges successful record_outcome processing and triggers analysis pipeline.",
-      "notesInFlow": true
+      "position": [1340, 500]
     },
     {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{$json}}",
-        "options": {}
-      },
+      "parameters": { "respondWith": "json", "responseBody": "={{$json}}", "options": {} },
       "id": "respond-schedule-overview",
       "name": "Respond Schedule Overview",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1020, 480],
-      "notes": "Returns doctor overview list to ElevenLabs.",
-      "notesInFlow": true
+      "position": [1120, 700]
     },
     {
-      "parameters": {
-        "jsCode": "return [{ json: { success: false, error: 'Unsupported tool_name', received: $json.tool_name || null } }];"
-      },
-      "id": "code-unsupported-tool",
-      "name": "Code Unsupported Tool",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [740, 660],
-      "notes": "Handles unknown tool names gracefully.",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{$json}}",
-        "options": { "responseCode": 400 }
-      },
+      "parameters": { "respondWith": "json", "responseBody": "={{$json}}", "options": { "responseCode": 400 } },
       "id": "respond-unsupported-tool",
       "name": "Respond Unsupported Tool",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1020, 660],
-      "notes": "Returns 400 for unsupported tool requests.",
-      "notesInFlow": true
+      "position": [1120, 860]
     }
   ],
   "connections": {
     "Webhook Call Handler": {
-      "main": [[{ "node": "Switch Tool Name", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Code Normalize", "type": "main", "index": 0 }]]
     },
-    "Switch Tool Name": {
+    "Code Normalize": {
+      "main": [[{ "node": "IF check_availability", "type": "main", "index": 0 }]]
+    },
+    "IF check_availability": {
       "main": [
-        [{ "node": "Code Check Availability",  "type": "main", "index": 0 }],
-        [{ "node": "Code Format Outcome",       "type": "main", "index": 0 }],
-        [{ "node": "Code Schedule Overview",    "type": "main", "index": 0 }],
+        [{ "node": "Code Check Availability", "type": "main", "index": 0 }],
+        [{ "node": "IF record_outcome",        "type": "main", "index": 0 }]
+      ]
+    },
+    "IF record_outcome": {
+      "main": [
+        [{ "node": "Code Format Outcome",      "type": "main", "index": 0 }],
+        [{ "node": "IF get_schedule_overview",  "type": "main", "index": 0 }]
+      ]
+    },
+    "IF get_schedule_overview": {
+      "main": [
+        [{ "node": "Code Schedule Overview",   "type": "main", "index": 0 }],
         [{ "node": "Code Unsupported Tool",     "type": "main", "index": 0 }]
       ]
     },
     "Code Check Availability":  { "main": [[{ "node": "Respond Availability",       "type": "main", "index": 0 }]] },
     "Code Format Outcome":      { "main": [[{ "node": "HTTP Trigger Analysis",       "type": "main", "index": 0 }]] },
     "Code Schedule Overview":   { "main": [[{ "node": "Respond Schedule Overview",   "type": "main", "index": 0 }]] },
-    "HTTP Trigger Analysis":    { "main": [[{ "node": "Respond Record Outcome",      "type": "main", "index": 0 }]] },
-    "Code Unsupported Tool":    { "main": [[{ "node": "Respond Unsupported Tool",    "type": "main", "index": 0 }]] }
+    "Code Unsupported Tool":    { "main": [[{ "node": "Respond Unsupported Tool",    "type": "main", "index": 0 }]] },
+    "HTTP Trigger Analysis":    { "main": [[{ "node": "Respond Record Outcome",      "type": "main", "index": 0 }]] }
   },
   "active": false,
   "settings": { "executionOrder": "v1" }

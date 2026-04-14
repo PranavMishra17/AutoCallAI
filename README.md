@@ -1,6 +1,48 @@
-# AutoCallAI
+<div align="center">
 
-Self-improving AI voice agent for medical appointment scheduling — with live voice UI, real-time transcripts, automated post-call prompt optimization, and a multi-page web interface.
+<img src="img/title.png" alt="AutoCallAI" width="720"/>
+
+<br/>
+
+![n8n](https://img.shields.io/badge/n8n-workflow-EA4B71?logo=n8n&logoColor=white)
+![ElevenLabs](https://img.shields.io/badge/ElevenLabs-voice_agent-000000?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyeiIvPjwvc3ZnPg==&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-2.0_Flash-4285F4?logo=google&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+**Self-improving AI voice agent for medical appointment scheduling** — live voice UI, real-time transcripts, automated post-call prompt optimization, and a multi-page web interface.
+
+</div>
+
+---
+
+## Screenshots
+
+<div align="center">
+
+| Call Agent | Doctor Schedule | AI Loop |
+|:---:|:---:|:---:|
+| <img src="img/agent.png" width="260"/> | <img src="img/doc.png" width="260"/> | <img src="img/loop.png" width="260"/> |
+
+</div>
+
+### n8n Workflows
+
+<div align="center">
+
+| Call Handler | Analysis Pipeline |
+|:---:|:---:|
+| <img src="img/handler.png" width="380"/> | <img src="img/analysis.png" width="380"/> |
+
+</div>
+
+---
+
+## Self-Improving Loop
+
+> **[Full technical deep-dive → SELF_IMPROVING_LOOP.md](SELF_IMPROVING_LOOP.md)**
+
+After every call, a Gemini judge scores the transcript across 6 weighted dimensions, a Gemini reviser rewrites the agent prompt, and the updated prompt is pushed live to ElevenLabs — no human intervention required. The AI Loop tab in the UI shows the current prompt version, last call score, and the full change history.
 
 ---
 
@@ -36,7 +78,7 @@ That's it. Sarah is live. Click **Start talking to Sarah** and speak naturally.
 
 ---
 
-## What You Will Build
+## What's Built
 
 - A real-time AI voice receptionist (Sarah) running on ElevenLabs.
 - An n8n call-handler workflow (`check_availability`, `get_schedule_overview`, `record_outcome`).
