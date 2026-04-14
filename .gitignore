@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+.claude/*
+
 # Distribution / packaging
 .Python
 build/
@@ -183,3 +185,6 @@ cython_debug/
 # Project essentials
 node_modules/
 .DS_Store
+/n8n/*
+/calls*
+.claude/settings.local.json

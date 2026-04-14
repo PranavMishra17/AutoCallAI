@@ -1,0 +1,56 @@
+{
+  "initialized": true,
+  "prompt_version": "v2",
+  "weighted_total": 1.2,
+  "changelog": [
+    "Strictly defined the agent's first utterance to explicitly include its purpose and a call to action, directly addressing the immediate call drop-off and lack of user engagement.",
+    "Added an explicit directive emphasizing the critical importance of immediate user engagement and clarity of purpose within the opening statement.",
+    "Integrated a 'Special Rule for First Turn' into the TURN-TAKING RULES to ensure the agent re-prompts if no initial user response is detected, serving as an engagement handler for early silence.",
+    "Reinforced the twofold functional purpose of the initial greeting (identification + function + invitation) to prevent patient confusion and disengagement.",
+    "Established placeholder sections for 'Known Doctors', 'show_confirmation trigger', and 'TURN-TAKING RULES' since the original prompt was unavailable, ensuring compliance with future verbatim preservation requirements."
+  ],
+  "last_updated": "2026-04-12T16:53:13.125724+00:00",
+  "total_calls_analyzed": 3,
+  "history": [
+    {
+      "version": "v2",
+      "score": 2.05,
+      "changelog": [
+        "Revised the initial greeting to immediately follow identification with a direct, open-ended question (\"How may I assist you with your appointment today?\") to swiftly engage the caller and elicit a response, addressing the primary failure point.",
+        "Added a 'CONVERSATION FLOW' section to provide explicit guidance on the agent's opening, information gathering, and confirmation steps, improving overall conversation structure.",
+        "Introduced specific objection handlers for common scenarios such as 'I'm busy', 'What is this about?', 'I'll call back later', and 'I need to speak to a person' to cover identified gaps in engagement.",
+        "Included placeholder sections for 'DOCTOR LIST', 'show_confirmation', and 'TURN-TAKING RULES' verbatim as instructed, even though their specific content from the previous prompt was unavailable.",
+        "Preserved the critical instruction 'Never re-ask information the patient has already given.' as per the requirements."
+      ],
+      "timestamp": "2026-04-12T16:44:44.939550+00:00",
+      "call_outcome": null
+    },
+    {
+      "version": "v2",
+      "score": 1.35,
+      "changelog": [
+        "**Immediate Engagement:** Modified the initial greeting to proactively state the call's purpose and ask an open-ended question (\"How can I help you?\") to prompt user interaction immediately after self-identification, directly addressing the call drop issue.",
+        "**Clarified Intent:** Explicitly defined the agent's first utterance to ensure the purpose of the call (appointment management) is clear from the outset, minimizing ambiguity and promoting user engagement.",
+        "**Minimized Pauses:** Structured the initial greeting and purpose statement as a single, seamless utterance to prevent perceived delays and maintain a continuous conversational flow.",
+        "**New Objection Handler (General):** Added instructions for handling user hesitation or attempts to disengage by gently re-stating purpose and offering specific assistance related to appointment management.",
+        "**Structured Verbatim Sections:** Included explicit `doctors`, `triggers`, and `TURN-TAKING RULES` sections as per requirements, ensuring they are present and clearly defined."
+      ],
+      "timestamp": "2026-04-12T16:44:59.943418+00:00",
+      "call_outcome": null
+    },
+    {
+      "version": "v2",
+      "score": 1.2,
+      "changelog": [
+        "Strictly defined the agent's first utterance to explicitly include its purpose and a call to action, directly addressing the immediate call drop-off and lack of user engagement.",
+        "Added an explicit directive emphasizing the critical importance of immediate user engagement and clarity of purpose within the opening statement.",
+        "Integrated a 'Special Rule for First Turn' into the TURN-TAKING RULES to ensure the agent re-prompts if no initial user response is detected, serving as an engagement handler for early silence.",
+        "Reinforced the twofold functional purpose of the initial greeting (identification + function + invitation) to prevent patient confusion and disengagement.",
+        "Established placeholder sections for 'Known Doctors', 'show_confirmation trigger', and 'TURN-TAKING RULES' since the original prompt was unavailable, ensuring compliance with future verbatim preservation requirements."
+      ],
+      "timestamp": "2026-04-12T16:53:13.125724+00:00",
+      "call_outcome": null
+    }
+  ],
+  "n8n_webhook": "https://paranoid17.app.n8n.cloud/webhook/call-handler"
+}

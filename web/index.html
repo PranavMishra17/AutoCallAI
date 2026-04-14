@@ -2089,7 +2089,7 @@
   </script>
   <script>
     /* ══ CONFIG ══════════════════════════════════════════════════════ */
-    const AGENT_ID = window.AUTO_CALL_AI_AGENT_ID || "agent_0901knw8qf26eddbzs594g49ch22";
+    const AGENT_ID = window.AUTO_CALL_AI_AGENT_ID || "agent_5301knyssbr0fnrrnf0vzygpp546";
     const POLL_INTERVAL = 14000;
 
     /* ══ SCHEDULE DATA ═══════════════════════════════════════════════ */
@@ -2285,8 +2285,13 @@
     let conversation = null;
     let callActive = false;
     let partialNode = null;
+    let transcriptLog = [];
+    let toolCallLog = [];
+    let callStartTime = null;
+    let callId = null;
 
     function setCallUI(state) {
+      console.log(`[AutoCallAI] UI state → ${state}`);
       const label = document.getElementById("agent-label");
       const sub = document.getElementById("agent-sub");
       const dot = document.getElementById("session-dot");
@@ -2347,13 +2352,14 @@
       }
 
       setCallUI("connecting");
-      
+
       // Clear transcript area for new calls
       document.getElementById("transcript-scroll").innerHTML = '';
 
       try {
+        console.log("[AutoCallAI] Connecting with agentId:", AGENT_ID);
         conversation = await ElevenLabsConversation.startSession({
-          agentId: "agent_0901knw8qf26eddbzs594g49ch22",
+          agentId: AGENT_ID,
           clientTools: {
             show_confirmation: (params) => {
               console.log("[Client Tool Executed] show_confirmation with params:", params);
@@ -2365,21 +2371,65 @@
               return "UI updated successfully with appointment details.";
             }
           },
-          onConnect: () => {
+          onConnect: ({ conversationId } = {}) => {
             callActive = true;
+            callStartTime = Date.now();
+            callId = conversationId || ('browser_' + Date.now());
+            console.log('[AutoCallAI] Connected — callId:', callId);
             setCallUI("live");
           },
           onDisconnect: () => {
+            console.log('[AutoCallAI] onDisconnect — session ended');
+            const duration = callStartTime ? Math.round((Date.now() - callStartTime) / 1000) : null;
+            const snapshot = transcriptLog.slice();
+            const toolSnapshot = toolCallLog.slice();
+            console.log('[AutoCallAI] Transcript (' + snapshot.length + ' turns):', JSON.stringify(snapshot));
+            console.log('[AutoCallAI] Tool calls (' + toolSnapshot.length + '):', JSON.stringify(toolSnapshot));
+            transcriptLog = [];
+            toolCallLog = [];
+            callStartTime = null;
+
+            // Only trigger analysis if there was a real conversation (≥4 turns = at least 2 user replies)
+            // Prevents garbage prompts being generated from 1-turn drop-off sessions
+            const userTurns = snapshot.filter(t => t.role === 'user' || t.role === 'human').length;
+            if (userTurns >= 2) {
+              console.log('[AutoCallAI] Triggering analysis (' + snapshot.length + ' turns, ' + userTurns + ' user turns)');
+              const payload = {
+                call_id: callId || ('browser_' + Date.now()),
+                outcome: 'DROPPED',
+                transcript: snapshot,
+                tool_calls: toolSnapshot,
+                duration_seconds: duration,
+                timestamp: new Date().toISOString()
+              };
+              fetch('/api/trigger-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              }).then(r => console.log('[AutoCallAI] Analysis triggered, server responded:', r.status))
+                .catch(e => console.warn('[AutoCallAI] Analysis trigger failed:', e));
+            } else {
+              console.log('[AutoCallAI] Skipping analysis — only ' + userTurns + ' user turn(s), need ≥2');
+            }
+
             endCleanup();
           },
           onMessage: (message) => {
-            console.log("[ElevenLabs] Message received:", message);
+            const msgType = message.type || message.event_type || "unknown";
+            console.log("[ElevenLabs] msg type=" + msgType + ":", JSON.stringify(message));
             const text = message.message || message.text || "";
             const src = message.source || message.role || "";
             if (message.type === "client_tool_call") {
-              console.log("[ElevenLabs] Agent invoked client tool:", message.tool_name, message.tool_parameters || message.parameters);
+              const toolEntry = {
+                tool: message.tool_name,
+                params: message.tool_parameters || message.parameters || {},
+                ts: new Date().toISOString()
+              };
+              toolCallLog.push(toolEntry);
+              console.log("[ElevenLabs] Client tool call logged:", JSON.stringify(toolEntry));
             }
             if (!text) return;
+            transcriptLog.push({ role: src, text, ts: new Date().toISOString() });
             if (src === "ai" || src === "agent" || src === "assistant") {
               addTranscript("agent", text, false);
             } else if (src === "user" || src === "human") {
@@ -2415,6 +2465,7 @@
     }
 
     function endCleanup() {
+      console.log('[AutoCallAI] endCleanup() — resetting call state');
       callActive = false;
       partialNode = null;
       setCallUI("ended");
